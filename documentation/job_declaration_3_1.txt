@@ -1,0 +1,16 @@
+targetFolderPath=Optional[target]
+targetZipFileName=myZipJ19
+filesToBeIncluded=[File_42.txt]
+subZipJobs=[
+    targetFolderPath=Optional.empty
+    targetZipFileName=MySubZip
+    filesToBeIncluded=[File_43.txt]
+    subZipJobs=[
+        targetFolderPath=Optional.empty
+        targetZipFileName=MySubSubZip
+        filesToBeIncluded=[File_44.txt]
+        subZipJobs=[
+            targetFolderPath=Optional.empty
+            targetZipFileName=MySubSubSubZip
+            filesToBeIncluded=[File_45.txt]
+            subZipJobs=[]]]]

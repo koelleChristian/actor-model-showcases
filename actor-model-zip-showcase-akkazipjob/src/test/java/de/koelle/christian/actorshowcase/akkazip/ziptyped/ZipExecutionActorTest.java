@@ -10,78 +10,101 @@ import akka.actor.testkit.typed.javadsl.ActorTestKit;
 import akka.actor.testkit.typed.javadsl.LoggingTestKit;
 import akka.actor.testkit.typed.javadsl.TestProbe;
 import akka.actor.typed.ActorRef;
-import de.koelle.christian.actorshowcase.akkazip.nonakka.TestdataSupplier;
-import org.junit.Test;
+import de.koelle.christian.actorshowcase.akkazip.ziptyped.commands.Command;
+import de.koelle.christian.actorshowcase.akkazip.ziptyped.commands.ZipExcecutionActorRequest;
+import de.koelle.christian.actorshowcase.akkazip.ziptyped.commands.ZipExecutionActorResponse;
+import de.koelle.christian.actorshowcase.common.FileClass;
+import de.koelle.christian.actorshowcase.common.OurFileUtils;
+import de.koelle.christian.actorshowcase.common.TechnicalZipperSupport;
+import de.koelle.christian.actorshowcase.common.TestdataSupplier;
+import de.koelle.christian.actorshowcase.common.ZipInputStreamSupplier;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class ZipExecutionActorTest {
 
-    static final ActorTestKit testKit = ActorTestKit.create();
+    private static final ActorTestKit TEST_KIT = ActorTestKit.create();
+    // public static final TestKitJunitResource TEST_KIT = new TestKitJunitResource(); // I am unwilling to use JUnit 4 again.
+    private final TestdataSupplier testdataSupplier = new TestdataSupplier();
+    private final OurFileUtils ourFileUtils = new OurFileUtils();
+    private final DateTimeFormatter sortableTimeStampFormatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     @AfterAll
     static void cleanup() {
-        testKit.shutdownTestKit();
+        TEST_KIT.shutdownTestKit();
     }
-
-//    @ClassRule
-//    public static final TestKitJunitResource testKit = new TestKitJunitResource();
-
-    private final TestdataSupplier testdataSupplier = new TestdataSupplier();
 
     @Test
     public void testZippingPositive() {
-        TestProbe<ZipExecutionActor.ZipExecutionActorResponse> probe = testKit.createTestProbe(ZipExecutionActor.ZipExecutionActorResponse.class);
-        ActorRef<ZipExecutionActor.Command> actor = testKit.spawn(ZipExecutionActor.create());
+        TestProbe<ZipExecutionActorResponse> probe = TEST_KIT.createTestProbe(ZipExecutionActorResponse.class);
+        ActorRef<Command> actor = TEST_KIT.spawn(ZipExecutionActor.create());
 
         final String zipJobName = "myZipJob";
-        final var filePathsToBeZippedByTargetName = testdataSupplier
-                .getExampleFilePaths()
+        final Map<String, ZipInputStreamSupplier> filePathsToBeZippedByTargetName = testdataSupplier
+                .getExampleFilePaths(FileClass.IMAGES)
                 .stream()
                 .limit(2) // Only two real files for this test.
                 .collect(Collectors.toMap(
                         i -> i.getFileName().toString(),
-                        i -> i
+                        TechnicalZipperSupport::getIssForFilePath
                 ));
-        actor.tell(new ZipExecutionActor.ZipExcecutionActorRequest(zipJobName, filePathsToBeZippedByTargetName, probe.getRef()));
-        ZipExecutionActor.ZipExecutionActorResponse response = probe.receiveMessage();
+        actor.tell(new ZipExcecutionActorRequest(zipJobName, filePathsToBeZippedByTargetName, probe.getRef()));
+        ZipExecutionActorResponse response = probe.receiveMessage();
 
-        Assertions.assertEquals(zipJobName, response.job().jobName());
-        Assertions.assertEquals(filePathsToBeZippedByTargetName, response.job().filePathsToBeZippedByTargetName());
-        Assertions.assertNotNull(response.tempResultPath());
+        var actualJobName = response.job().jobName();
+        var actualBinaryInput = response.job().zipInputStreamSupplierByTargetFileName();
+        var actualTempResultPath = response.tempResultPath();
+
+        Assertions.assertEquals(zipJobName, actualJobName);
+        Assertions.assertEquals(filePathsToBeZippedByTargetName, actualBinaryInput);
+        Assertions.assertNotNull(actualTempResultPath);
+
+        ourFileUtils.moveFile(actualTempResultPath, Paths.get(
+                "target",
+                "test",
+                "%s_testZippingPositive_%s.zip".formatted(this.getClass().getSimpleName(), sortableTimeStampFormatter.format(LocalDateTime.now()))));
     }
 
     @Test
-    public void testZippingNegativeFileUnavailable1() {
-        TestProbe<ZipExecutionActor.ZipExecutionActorResponse> probe = testKit.createTestProbe(ZipExecutionActor.ZipExecutionActorResponse.class);
-        ActorRef<ZipExecutionActor.Command> actor = testKit.spawn(ZipExecutionActor.create());
+    public void testZippingNegativeFileUnavailableWithoutAssertion() {
+        TestProbe<ZipExecutionActorResponse> probe = TEST_KIT.createTestProbe(ZipExecutionActorResponse.class);
+        ActorRef<Command> actor = TEST_KIT.spawn(ZipExecutionActor.create());
 
         final String zipJobName = "myZipJob";
-        final Map<String, Path> filePathsToBeZippedByTargetName = Map.of("a.jpg", Paths.get("target", UUID.randomUUID().toString() + ".jpeg"));
-        actor.tell(new ZipExecutionActor.ZipExcecutionActorRequest(zipJobName, filePathsToBeZippedByTargetName, probe.getRef()));
+        final Map<String, ZipInputStreamSupplier> filePathsToBeZippedByTargetName = Map.of(
+                "a.jpg",
+                TechnicalZipperSupport.getIssForFilePath(Paths.get("target", UUID.randomUUID().toString() + ".jpeg"))
+        );
+        actor.tell(new ZipExcecutionActorRequest(zipJobName, filePathsToBeZippedByTargetName, probe.getRef()));
         probe.expectNoMessage();
     }
 
     @Test
-    public void testZippingNegativeFileUnavailable2() {
-        TestProbe<ZipExecutionActor.ZipExecutionActorResponse> probe = testKit.createTestProbe(ZipExecutionActor.ZipExecutionActorResponse.class);
-        ActorRef<ZipExecutionActor.Command> actor = testKit.spawn(ZipExecutionActor.create());
+    public void testZippingNegativeFileUnavailableWithErrorAssertion() {
+        TestProbe<ZipExecutionActorResponse> probe = TEST_KIT.createTestProbe(ZipExecutionActorResponse.class);
+        ActorRef<Command> actor = TEST_KIT.spawn(ZipExecutionActor.create());
 
         final String zipJobName = "myZipJob";
-        final Map<String, Path> filePathsToBeZippedByTargetName = Map.of("a.jpg", Paths.get("target", UUID.randomUUID().toString() + ".jpeg"));
+        final Map<String, ZipInputStreamSupplier> filePathsToBeZippedByTargetName = Map.of(
+                "a.jpg",
+                TechnicalZipperSupport.getIssForFilePath(Paths.get("target", UUID.randomUUID().toString() + ".jpeg"))
+        );
+
         LoggingTestKit.error(IllegalStateException.class)
                 .withMessageRegex(".*Error as file to be zipped is not available.*")
                 .withOccurrences(1)
                 .expect(
-                        testKit.system(),
+                        TEST_KIT.system(),
                         () -> {
-                            actor.tell((new ZipExecutionActor.ZipExcecutionActorRequest(zipJobName, filePathsToBeZippedByTargetName, probe.getRef())));
+                            actor.tell((new ZipExcecutionActorRequest(zipJobName, filePathsToBeZippedByTargetName, probe.getRef())));
                             return null;
                         });
     }

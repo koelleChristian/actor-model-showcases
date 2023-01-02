@@ -1,0 +1,8 @@
+myZipJ19.zip
+│   File_42.txt
+└───MySubZip_1.zip
+    │   File_43.txt
+    └───MySubSubZip.zip
+        │   File_44.txt
+        └───MySubSubSubZip.zip
+                File_45.txt

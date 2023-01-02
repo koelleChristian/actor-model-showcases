@@ -4,7 +4,7 @@
                name="XMLConfigTest"
                packages="org.apache.logging.log4j.test">
     <Properties>
-        <Property name="filename">target/akkazipjob.log</Property>
+        <Property name="filename">target/akkapgt.log</Property>
         <Property name="pattern">%d %p %c{1.} %m%n</Property>
     </Properties>
     <Filter type="ThresholdFilter"

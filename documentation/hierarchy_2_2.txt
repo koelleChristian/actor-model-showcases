@@ -1,0 +1,21 @@
+myZipJ19.zip
+│   File_1.txt
+│   File_2.txt
+├───File_1.zip
+│   │   File_1.txt
+│   │   File_2.txt
+│   ├───File_1.zip
+│   │       File_1.txt
+│   │       File_2.txt
+│   └───File_2.zip
+│           File_1.txt
+│           File_2.txt
+└───File_2.zip
+    │   File_1.txt
+    │   File_2.txt
+    ├───File_1.zip
+    │       File_1.txt
+    │       File_2.txt
+    └───File_2.zip
+            File_1.txt
+            File_2.txt
