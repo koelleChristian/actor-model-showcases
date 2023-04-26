@@ -29,10 +29,20 @@ The challenge to create a zip file within a zip file can be approached recursive
 === Zip Job Declaration
 
 A zip job declaration is a recursive structure and defined by the following:
-
+////
 [source, sh]
 ----
 include::documentation/ZipJobExtract.java[]
+----
+////
+[source, sh]
+----
+public record ZipJob(
+        Optional<Path> targetFolderPath,
+        String targetZipFileName,
+        Map<String, ZipInputStreamSupplier> filesToBeIncluded,
+        Set<ZipJob> subZipJobs) {
+}
 ----
 
 The `ZipInputStreamSupplier` ...
@@ -41,6 +51,7 @@ The `ZipInputStreamSupplier` ...
 * Can be used to implement lazy file generation.
 
 .Zip Job Declaration Examples
+////
 [width="100%",options="header,footer",cols="l,l"]
 |====================
 | Zip Job Declaration | Outcome 
@@ -53,8 +64,88 @@ include::documentation/job_declaration_2_2.txt[]
 | 
 include::documentation/hierarchy_2_2.txt[]
 |====================
-
-
+////
+[width="100%",options="header,footer",cols="l,l"]
+|====================
+| Zip Job Declaration | Outcome 
+|
+targetFolderPath=Optional[target]
+targetZipFileName=myZipJ19
+filesToBeIncluded=[File_42.txt]
+subZipJobs=[
+    targetFolderPath=Optional.empty
+    targetZipFileName=MySubZip
+    filesToBeIncluded=[File_43.txt]
+    subZipJobs=[
+        targetFolderPath=Optional.empty
+        targetZipFileName=MySubSubZip
+        filesToBeIncluded=[File_44.txt]
+        subZipJobs=[
+            targetFolderPath=Optional.empty
+            targetZipFileName=MySubSubSubZip
+            filesToBeIncluded=[File_45.txt]
+            subZipJobs=[]]]]
+| 
+myZipJ19.zip
+│   File_42.txt
+└───MySubZip_1.zip
+    │   File_43.txt
+    └───MySubSubZip.zip
+        │   File_44.txt
+        └───MySubSubSubZip.zip
+                File_45.txt
+|
+targetFolderPath=Optional[target]
+targetZipFileName=myZipJ19
+filesToBeIncluded=[File_1.txt, File_2.txt]
+subZipJobs=[
+    targetFolderPath=Optional.empty
+    targetZipFileName=File_1
+    filesToBeIncluded=[File_1.txt, File_2.txt]
+    subZipJobs=[
+        targetFolderPath=Optional.empty
+        targetZipFileName=File_1
+        filesToBeIncluded=[File_1.txt, File_2.txt]
+        subZipJobs=[],
+        targetFolderPath=Optional.empty
+        targetZipFileName=File_2
+        filesToBeIncluded=[File_1.txt, File_2.txt]
+        subZipJobs=[]],
+    targetFolderPath=Optional.empty
+    targetZipFileName=File_2
+    filesToBeIncluded=[File_1.txt, File_2.txt]
+    subZipJobs=[
+        targetFolderPath=Optional.empty
+        targetZipFileName=File_1
+        filesToBeIncluded=[File_1.txt, File_2.txt]
+        subZipJobs=[],
+        targetFolderPath=Optional.empty
+        targetZipFileName=File_2
+        filesToBeIncluded=[File_1.txt, File_2.txt]
+        subZipJobs=[]]]
+| 
+myZipJ19.zip
+│   File_1.txt
+│   File_2.txt
+├───File_1.zip
+│   │   File_1.txt
+│   │   File_2.txt
+│   ├───File_1.zip
+│   │       File_1.txt
+│   │       File_2.txt
+│   └───File_2.zip
+│           File_1.txt
+│           File_2.txt
+└───File_2.zip
+    │   File_1.txt
+    │   File_2.txt
+    ├───File_1.zip
+    │       File_1.txt
+    │       File_2.txt
+    └───File_2.zip
+            File_1.txt
+            File_2.txt
+|====================
 
 
 === File I/O
